@@ -1,52 +1,121 @@
 <?php
 
+namespace Libraries;
+
+use Traits\Singleton;
+use Closure;
+use Exception;
+use InvalidArgumentException;
+
 /**
- * @method static get($url, $handle)
- * @method static post($url, $handle)
- * @method static put($url, $handle)
- * @method static patch($url, $handle)
- * @method static delete($url, $handle)
+ * Used to bind url routes with their proper handlers.
  */
 class Router
 {
-    protected static $routes = [];
-    protected static $instance = null;
+    use Singleton;
 
+    protected static $routes = [];
+    protected $prefix = '';
+
+    /**
+     * Registers a route
+     * 
+     * @param string $uri
+     * @param \Closure|string $handle
+     * @param string $method
+     * @return static
+     */
     protected function register($uri, $handle, $method)
     {
         static::$routes[] = [
-            'uri' => $uri,
+            'uri' => $this->prefix . $uri,
             'handle' => $handle,
             'method' => $method,
         ];
         return $this;
     }
 
+    /**
+     * Registers a GET route
+     * 
+     * @param string $uri
+     * @param \Closure|string $handle
+     * @return static
+     */
     public function get($uri, $handle)
     {
         return $this->register($uri, $handle, 'get');
     }
 
+    /**
+     * Registers a POST route
+     * 
+     * @param string $uri
+     * @param \Closure|string $handle
+     * @return static
+     */
     public function post($uri, $handle)
     {
         return $this->register($uri, $handle, 'post');
     }
 
+    /**
+     * Registers a PUT route
+     * 
+     * @param string $uri
+     * @param \Closure|string $handle
+     * @return static
+     */
     public function put($uri, $handle)
     {
         return $this->register($uri, $handle, 'put');
     }
 
+    /**
+     * Registers a PATCH route
+     * 
+     * @param string $uri
+     * @param \Closure|string $handle
+     * @return static
+     */
     public function patch($uri, $handle)
     {
         return $this->register($uri, $handle, 'patch');
     }
 
+    /**
+     * Registers a DELETE route
+     * 
+     * @param string $uri
+     * @param \Closure|string $handle
+     * @return static
+     */
     public function delete($uri, $handle)
     {
         return $this->register($uri, $handle, 'delete');
     }
 
+    /**
+     * Groups routes with a prefix
+     * 
+     * @param string $prefix
+     * @param \Closure $callable
+     * @return static
+     */
+    public function group($prefix, $callable)
+    {
+        $this->prefix = $prefix;
+        $callable($this);
+        $this->prefix = '';
+        return $this;
+    }
+
+    /**
+     * Tests the givel url against the registered routes
+     * 
+     * @param string $url
+     * @return mixed
+     */
     public function run($url)
     {
         foreach (static::$routes as $route) {
@@ -73,6 +142,6 @@ class Router
                 }
             }
         }
-        return view('errors/404');
+        return view('errors.404');
     }
 }

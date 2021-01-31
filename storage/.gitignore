@@ -1,0 +1,5 @@
+/app/*
+/logs/*
+
+!/logs/.gitkeep
+!/app/.gitkeep
