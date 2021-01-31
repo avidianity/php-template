@@ -4,5 +4,6 @@ use Libraries\Router;
 
 $router = Router::getInstance();
 
-$router->post('/hi', function () {
+$router->get('/', function () {
+    return view('home');
 });
