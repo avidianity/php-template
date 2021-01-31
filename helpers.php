@@ -105,6 +105,8 @@ function serializeArray($array)
             return $element->toJSON();
         } else if ($element instanceof Arrayable) {
             return $element->toArray();
+        } else if (is_array($element)) {
+            return serializeArray($element);
         } else {
             return $element;
         }

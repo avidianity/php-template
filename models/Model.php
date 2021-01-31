@@ -3,13 +3,16 @@
 namespace Models;
 
 use Interfaces\Arrayable;
+use Interfaces\HasRelationships;
 use Interfaces\JSONable;
 use PDO;
 use stdClass;
-use PDOException;
+use Traits\HasRelations;
 
 abstract class Model implements JSONable, Arrayable
 {
+    use HasRelations;
+
     /**
      * Current data associated with this model
      * 
@@ -76,6 +79,12 @@ abstract class Model implements JSONable, Arrayable
      */
     public function __get($key)
     {
+        if (method_exists($this, $key)) {
+            $result = $this->{$key}();
+            if ($result instanceof HasRelationships) {
+                return $result->get();
+            }
+        }
         return $this->data[$key];
     }
 
@@ -87,7 +96,7 @@ abstract class Model implements JSONable, Arrayable
      */
     public function fill($data)
     {
-        return $this->forceFill(only($data, $this->hidden));
+        return $this->forceFill(only($data, $this->fillable));
     }
 
     /**
@@ -158,11 +167,21 @@ abstract class Model implements JSONable, Arrayable
     /**
      * Get the current connection
      * 
-     * @return \PDO;
+     * @return PDO;
      */
-    public static function getConnection()
+    public static function getConnection(): PDO
     {
         return static::$pdo;
+    }
+
+    /**
+     * Get raw data of the current instance
+     * 
+     * @return mixed
+     */
+    public function getData()
+    {
+        return $this->data;
     }
 
     /**
@@ -186,9 +205,6 @@ abstract class Model implements JSONable, Arrayable
         }, array_keys($data))) . ');';
 
         $statement = static::$pdo->prepare($query);
-        if (!$statement) {
-            throw new PDOException('Unable to prepare PDO statement.');
-        }
 
         $inputs = [];
 
@@ -232,10 +248,7 @@ abstract class Model implements JSONable, Arrayable
 
         $query .= 'WHERE id = :id;';
 
-        $statement = static::$pdo->prepare($query, [PDO::ATTR_CURSOR => PDO::CURSOR_FWDONLY]);
-        if (!$statement) {
-            throw new PDOException('Unable to prepare PDO statement.');
-        }
+        $statement = static::$pdo->prepare($query);
 
         $inputs = [
             ':id' => $this->id,
@@ -247,7 +260,11 @@ abstract class Model implements JSONable, Arrayable
 
         $statement->execute($inputs);
 
-        return static::find($this->id);
+        $instance = static::find($this->id);
+
+        $this->forceFill($instance->getData());
+
+        return $instance;
     }
 
     /**
@@ -257,9 +274,11 @@ abstract class Model implements JSONable, Arrayable
      */
     public function save()
     {
-        return in_array('id', $this->data)
-            ? $this->update()
-            : static::create($this->data);
+        if (in_array('id', array_keys($this->data))) {
+            return $this->update();
+        }
+        $instance = static::create($this->data);
+        return $this->forceFill($instance->getData());
     }
 
     /**
@@ -270,9 +289,6 @@ abstract class Model implements JSONable, Arrayable
     public function delete()
     {
         $statement = static::$pdo->prepare('DELETE FROM ' . $this->getTable() . ' WHERE id = :id;');
-        if (!$statement) {
-            throw new PDOException('Unable to prepare PDO statement.');
-        }
 
         $statement->execute([':id' => $this->id]);
 
@@ -298,9 +314,6 @@ abstract class Model implements JSONable, Arrayable
             return '?';
         }, $ids)) . ');';
         $statement = static::$pdo->prepare($query);
-        if (!$statement) {
-            throw new PDOException('Unable to prepare PDO statement.');
-        }
 
         $statement->execute($ids);
     }
@@ -313,9 +326,6 @@ abstract class Model implements JSONable, Arrayable
     public static function getAll()
     {
         $statement = static::$pdo->query('SELECT * FROM ' . (new static())->getTable() . ';');
-        if (!$statement) {
-            throw new PDOException('Unable to prepare PDO statement.');
-        }
 
         return array_map(function ($row) {
             $instance = (new static)->forceFill($row);
@@ -343,9 +353,6 @@ abstract class Model implements JSONable, Arrayable
         }, $ids)) . ');';
 
         $statement = static::$pdo->prepare($query);
-        if (!$statement) {
-            throw new PDOException('Unable to prepare PDO statement.');
-        }
 
         $statement->execute($ids);
 
