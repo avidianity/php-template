@@ -2,6 +2,7 @@
 
 use Interfaces\Arrayable;
 use Interfaces\JSONable;
+use Libraries\Input;
 
 /**
  * Return a file from the views folder
@@ -111,6 +112,16 @@ function serializeArray($array)
             return $element;
         }
     }, $array);
+}
+
+/**
+ * Get the current request's inputs
+ * 
+ * @return \Libraries\Input
+ */
+function input()
+{
+    return Input::getInstance();
 }
 
 /**
